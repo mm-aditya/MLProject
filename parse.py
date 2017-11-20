@@ -2,9 +2,9 @@
 from pprint import pprint
 
 
-def parseFile(filepath = "EN/EN/train"):
+def parseFile(filepath):
 
-	fo = open(filepath, "r")
+	fo = open(filepath, "r", encoding='utf-8')
 	tokenlist = []
 
 	token = []
@@ -30,9 +30,9 @@ def parseFile(filepath = "EN/EN/train"):
 	return [token,tag]
 
 
-def parseFileInput(filepath = "EN/EN/train"):
+def parseFileInput(filepath):
 
-	fo = open(filepath, "r")
+	fo = open(filepath, "r", encoding = 'utf-8')
 	tokenlist = []
 
 	token = []
@@ -53,6 +53,7 @@ def parseFileInput(filepath = "EN/EN/train"):
 	fo.close()
 
 	return token
+
 
 
 # parseFile()
