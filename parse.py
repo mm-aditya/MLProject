@@ -9,6 +9,8 @@ def parseFile(filepath):
 
 	token = []
 	tag = []
+	token.append(None)
+	tag.append(None)
 	ctr = 0
 
 	for line in fo:
@@ -22,7 +24,7 @@ def parseFile(filepath):
 			token.append(None)
 			tag.append(None)
 
-	del tokenlist[len(tokenlist)-1]
+	#del tokenlist[len(tokenlist)-1]
 	# pprint(tokenlist)
 	# pprint(token)
 	fo.close()

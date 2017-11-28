@@ -21,17 +21,18 @@ def countc(tags1, state2, state1):
         if tags[i] == None:
             tags[i] = '#SPACE#'
 
+    if state1 == 'START' and state2 == 'STOP':
+        return 0
+
     if state2 == 'STOP':
         state2 = '#SPACE#'
     if state1 == 'START':
-        state1 = '#SPACE'
-
-    if state1 == 'START' and state2 == 'STOP':
-        return 0
+        state1 = '#SPACE#'
 
     ctr = 0
     prev = None
     for i in tags:
+        #print(prev, i)
         if prev==None:
             prev = i
         else:
@@ -70,7 +71,7 @@ def calculateEmission(tokens, tags, k=0):
         percent = float(ctr/lenz) * 100
         print(percent , "%" )            #Print percentage of emission parameters calculated
 
-    #pprint(emissionParams)
+    pprint(emissionParams)
 
     return emissionParams
 
@@ -78,6 +79,8 @@ def calculateEmission(tokens, tags, k=0):
 
 def calculateTransmission(tags):
     transmissionParams = {}
+
+    pprint(tags)
 
     tagset = set(tags)
     tagset.remove(None)
@@ -97,13 +100,21 @@ def calculateTransmission(tags):
     for i in transmissionParams:
         for p in transmissionParams[i]:
             #print(i)
-            ctr = i
-            if i == 'START' or i=='STOP':
+            ctr = p
+            if p == 'START':
                 ctr = None
-            transmissionParams[i][p] = float(countc(tags,i,p)/float(tags.count(ctr)))
+            countC = float(countc(tags,i,p))
+            counT = float(tags.count(ctr))
+            if p == 'START':
+                counT = counT-1
+            print("Count; for: ", p,i,": ",countC)
+            print("Count for: ", p ,": ",counT)
+            print("Result: ", countC/counT)
+            print("")
+            transmissionParams[i][p] = countC/counT   #State2,State1
             # pprint(tags)
 
-    #pprint(transmissionParams)
+    pprint(transmissionParams)
 
     # for i in range (len(tokens)):
     #     if tokens[i] == None:
@@ -197,17 +208,21 @@ def writeout(tokens, tags, filename):
 def main():
     # simpleSentiment('/Users/aditya/Desktop/Machine Learning/Project/MLProject/EN/EN/train','/Users/aditya/Desktop/Machine Learning/Project/MLProject/EN/EN/dev.in','/Users/aditya/Desktop/Machine Learning/Project/MLProject/EN/EN/dev.out')
 
-    temp = parseFile('/Users/aditya/Desktop/Machine Learning/Project/MLProject/EN/EN/train')
+    temp = parseFile('/Users/aditya/Desktop/Machine Learning/Project/MLProject/EN/EN/hw4')
     tokens = temp[0]
     tags = temp[1]
 
-    # calculateTransmission(tags)
-    # calculateEmission(tokens, tags, 3)
+    # pprint(tokens)
+    # print("\n")
+    # pprint(tags)
+
+    calculateTransmission(tokens)
+    calculateEmission(tags, tokens, 3)
     # viterbi(tags, tokens)
 
 
     #Run this one for question 2
-    simpleSentiment('/Users/aditya/Desktop/Machine Learning/Project/MLProject/EN/EN/train', '/Users/aditya/Desktop/Machine Learning/Project/MLProject/EN/EN/dev.in', '/Users/aditya/Desktop/Machine Learning/Project/MLProject/EN/EN/dev.out')
+    # simpleSentiment('/Users/aditya/Desktop/Machine Learning/Project/MLProject/EN/EN/train', '/Users/aditya/Desktop/Machine Learning/Project/MLProject/EN/EN/dev.in', '/Users/aditya/Desktop/Machine Learning/Project/MLProject/EN/EN/dev.out')
 
 
 main()
