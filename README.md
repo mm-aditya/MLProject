@@ -7,17 +7,17 @@ The two methods within allow us to parse and store the data inside the training 
 ## mltoolkit.py
 A suite of machine learning tools for sentiment analysis with the followint features:
 
-######Emission Parameter
+###### Emission Parameter
 Generate emission probability table from training data
 
-######Transition Parameter
+###### Transition Parameter
 Generate transition probability table from training data
 
-######Simple Sentiment Analysis
+###### Simple Sentiment Analysis
 Generate tags for coresponding token using only emission probability table
 
-######Viterbi Decoding Algorithm
+###### Viterbi Decoding Algorithm
 Generate sequence of tags for corresponding sequence of tokens by finding path with maximum probability for the given inputs
 
-######Max-Marginal Decoding Algorithm
+###### Max-Marginal Decoding Algorithm
 In-progress
