@@ -2,60 +2,52 @@
 from pprint import pprint
 
 
-def parseFile(filepath):
+def parseTrainFile(filepath):
 
 	fo = open(filepath, "r", encoding='utf-8')
-	tokenlist = []
 
 	token = []
 	tag = []
+
+	#First line
 	token.append(None)
-	tag.append(None)
-	ctr = 0
+	tag.append('START')
 
 	for line in fo:
-		#print "Line is: ", line
 		temp = line.split()
-		tokenlist.append(temp)
+
 		if(len(temp)!=0):
 			token.append(temp[0])
 			tag.append(temp[1])
 		else:
 			token.append(None)
-			tag.append(None)
+			token.append(None)
+			tag.append('STOP')
+			tag.append('START')
 
-	#del tokenlist[len(tokenlist)-1]
-	# pprint(tokenlist)
-	# pprint(token)
+	#Last line
+	token.append(None)
+	tag.append('STOP')
+	tag.append('END')
+
 	fo.close()
 
 	return [token,tag]
 
-
 def parseFileInput(filepath):
-
 	fo = open(filepath, "r", encoding = 'utf-8')
-	tokenlist = []
 
 	token = []
-	ctr = 0
 
 	for line in fo:
 		#print "Line is: ", line
 		temp = line.split()
-		tokenlist.append(temp)
 		if(len(temp)!=0):
 			token.append(temp[0])
 		else:
 			token.append(None)
 
-	del tokenlist[len(tokenlist)-1]
-	# pprint(tokenlist)
-	# pprint(token)
 	fo.close()
 
 	return token
-
-
-
 # parseFile()
