@@ -1,4 +1,3 @@
-#parser for the input files
 from pprint import pprint
 
 
@@ -9,9 +8,9 @@ def parseTrainFile(filepath):
 	token = []
 	tag = []
 
-	#First line
-	token.append(None)
-	tag.append('START')
+	# #First line
+	# token.append(None)
+	# tag.append('START')
 
 	for line in fo:
 		temp = line.split()
@@ -21,14 +20,16 @@ def parseTrainFile(filepath):
 			tag.append(temp[1])
 		else:
 			token.append(None)
-			token.append(None)
-			tag.append('STOP')
-			tag.append('START')
+			tag.append(None)
+			# token.append(None)
+			# token.append(None)
+			# tag.append('STOP')
+			# tag.append('START')
 
 	#Last line
-	token.append(None)
-	tag.append('STOP')
-	tag.append('END')
+	# token.append(None)
+	# tag.append('STOP')
+	# tag.append('END')
 
 	fo.close()
 

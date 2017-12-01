@@ -6,45 +6,46 @@ from collections import Counter
 import os
 import itertools
 
+######################
+# Model Trainer     
+######################
+
 def countTags(tags):
     tagset = set(tags)
-    tagset.remove('STOP')
-    tagset.remove('END')
 
     countT = {}
     for t in tagset:
         countT[t] = 0
 
-    for c, t in enumerate(tags):
-        if t == 'STOP' or t == 'END':
-            pass
-
-        #handle multiple line breaks
-        elif t == 'START' and tags[c+1] == 'STOP':
-            pass
-
-        else:
-            countT[t] +=1
+    for t in tags:
+        countT[t] +=1
 
     return countT
 
-def writeout(tokens, tags, filename):
-    fo = open(filename, "w", encoding = 'utf-8')
-    for i in range (len(tokens)):
-        if tokens[i] == None:
-            fo.write("\n")
-        else:
-            towrite = tokens[i] + " " + tags[i] + "\n"
-            fo.write(towrite)
-    fo.close()
-
 def calculateEmission(tags, tokens, k=0):
-    #horizontal label
+    """
+    Train the emission parameter of the model from a given sequence of tags (training data)
+    
+    Parameters
+    ----------
+    tags,token      : list
+        Sequence of corresponding tags and tokens from training data
+
+    k               : integer
+        Learning threshold for the token (if the token appear less than k times, it is considered unknown token)
+
+    Returns
+    -------
+    emissionParams  : list
+        Emission parameter of the trained model
+
+    """
+    #Horizontal label
     tokenset = set(tokens)
     tokenset.remove(None)
     tokenset.add('#UNK#')
 
-    #label words that appear less than k times as #UNK#
+    #Label words that appear less than k times as #UNK#
     countTokens = {}
     for t in tokenset:
         countTokens[t] = 0
@@ -59,56 +60,68 @@ def calculateEmission(tags, tokens, k=0):
         if t == None:
             pass
         else:
-            if countTokens[t]<k:
+            if countTokens[t] < k:
                 tokens[c] = '#UNK#'
 
-    #vertical label
-    tagset = set(tags)
-    tagset.remove('START')
-    tagset.remove('STOP')
-    tagset.remove('END')
+    #Updated Horizontal label
+    tokenset = set(tokens)
+    tokenset.remove(None)
 
-    #initialize emission probability table
+    #Vertical label
+    tagset = set(tags)
+    tagset.remove(None)
+
+    #Initialize emission probability table
     emissionParams = {}
     for j in tagset:
         temp = {}
         for o in tokenset:
             temp.update({o: 0})
-        #print temp
         emissionParams.update({j:temp})
 
     countT = countTags(tags)
 
-    #count the emission of o by j
+    #Count the emission of o by j
     for c in range(len(tokens)):
-        if tokens[c] == None: #or tokens[c] == '#UNK#':
+        if tokens[c] == None:
             pass
         else:
             emissionParams[tags[c]][tokens[c]] += 1
 
-    #calculate the actual emission probability   
+    #Calculate the emission probability   
     for j in emissionParams:
         for o in emissionParams[j]:
             emissionParams[j][o] = float(emissionParams[j][o])/float(countT[j])
 
-    #pprint(emissionParams)
-
     return emissionParams
 
 def calculateTransition(tags):
-    #pprint(tags)
+    """
+    Train the transition parameter of the model from a given sequence of tags (training data)
+    
+    Parameters
+    ----------
+    tags            : list
+        Sequence of tags from training data
 
-    #vertical label
+    Returns
+    -------
+    transitionParams: list
+        Transition parameter of the trained model
+
+    """
+
+    #Vertical label
     tagset = set(tags)
-    tagset.remove('STOP')
-    tagset.remove('END')
+    tagset.remove(None)
+    tagset.add('START')
 
-    #horizontal label
+    #Horizontal label
     tagset2 = set(tags)
-    tagset2.remove('START')
-    tagset2.remove('END')
+    tagset2.remove(None)
+    tagset2.add('STOP')
 
-    #initialize transition probability table
+    #Initialize transition probability table
     transitionParams = {}
     for i in tagset:
         temp = {}
@@ -116,43 +129,77 @@ def calculateTransition(tags):
             temp.update({p:0})
         transitionParams.update({i : temp})
 
-    #initialize total count 
+    #Count the number of times the tags appear
     countT = countTags(tags)
 
-    #count transition i-j
+    #Count the number of transition
     for c, t in enumerate(tags):
-        if tags[c+1] == 'END':
-            break
+        #Start of first sentence
+        if c == 0:
+            transitionParams['START'][t] +=1
 
-        if t == 'STOP' or (t == 'START' and tags[c+1] == 'STOP') :
-            pass
+        #End of sentence
+        elif t == None:
+            transitionParams[tags[c-1]]['STOP'] += 1
 
         else:
-            transitionParams[t][tags[c+1]] += 1
+            #Start of new sentence
+            if tags[c-1] == None:
+                transitionParams['START'][t] +=1
+            #Recursion
+            else:
+                transitionParams[tags[c-1]][t] += 1
 
-    #calculate the actual transition probability
+    #Calculate the transition probability
     for i in transitionParams:
         for j in transitionParams[i]:
-            transitionParams[i][j] = float(transitionParams[i][j])/float(countT[i])
-
-    #pprint(transitionParams)
+            if i != 'START' and j != 'STOP':
+                transitionParams[i][j] = float(transitionParams[i][j])/float(countT[i])
 
     return transitionParams
 
+######################
+# Algorithm          
+######################
+
 def simple(inputTokens, emissionParams):
+    """
+    Simple sentiment analysis to decode the most likely tag for a given token by choosing the highest emission probability by a tag for each token
+    If the trained model doesn't recognise the word, use the #UNK# emission probability
+    
+    Parameters
+    ----------
+    inputTokens     : list
+        List of input tokens
+
+    emissionParams  : list
+        Emission probability - emissionParams(j)(o) <==> probability of word o being generated by tag j
+
+    Returns
+    -------
+    predictedTags   : list
+        List of predicted tags for input tokens
+
+    """
     predictedTags = []
 
     for i in inputTokens:
         if i == None:
-            predictedTags.append("#SPACE#")
+            predictedTags.append(None)
+
         else:
             tempMaxProb = 0
-            tempTag = '#UNK#'
+            tempTag = ''
+
 
             for j in emissionParams:
                 if i in emissionParams[j]:
                     if emissionParams[j][i] > tempMaxProb:
                         tempMaxProb = emissionParams[j][i]
+                        tempTag = j
+                else:
+                    if emissionParams[j]['#UNK#'] > tempMaxProb:
+                        tempMaxProb = emissionParams[j]['#UNK#']
                         tempTag = j
 
             predictedTags.append(tempTag)
@@ -160,13 +207,29 @@ def simple(inputTokens, emissionParams):
     return predictedTags
 
 def viterbi(inputTokens, transitionParams, emissionParams):
+    """
+    Viterbi decoding algorithm to predict the most likely tag sequence for the given tokens
+    If the trained model doesn't recognise the word, use the parameter for #UNK# 
+    
+    Parameters
+    ----------
+    inputTokens     : list
+        List of input tokens
 
-    #generate tagset from emission table label
+    emissionParams  : list
+        Emission probability - emissionParams(j)(o) <==> probability of word o being generated by tag j
+
+    Returns
+    -------
+    predictedTags   : list
+        List of predicted tags for input tokens
+
+    """
     tagset = []
     for t in emissionParams:
         tagset.append(t)
 
-    #get path probability table
+    #Get path probability table
     piTable = []
 
     for count, token in enumerate(inputTokens):
@@ -175,9 +238,7 @@ def viterbi(inputTokens, transitionParams, emissionParams):
         if token not in emissionParams['O'] and token != None:
             token = '#UNK#'
         
-        #print(count,token)
-        
-        #initialization
+        #Initialization
         if count == 0:
             for v in tagset:
                 pikv = []
@@ -189,7 +250,7 @@ def viterbi(inputTokens, transitionParams, emissionParams):
                     pikv.append('X')
                 currentPi.append(pikv)
 
-        #termination
+        #Termination
         elif token == None:
             maxPi = 0
             tempPointer = 'X'
@@ -206,12 +267,8 @@ def viterbi(inputTokens, transitionParams, emissionParams):
             pikv.append(tempPointer)
             currentPi.append(pikv)
 
-        #handle extra blank lines
-        #elif token == None and inputTokens[count-1] != None:
-
-
         else:
-            #re-initialization
+            #Re-initialization
             if inputTokens[count-1] == None:
                 for v in tagset:
                     pikv = []
@@ -223,7 +280,7 @@ def viterbi(inputTokens, transitionParams, emissionParams):
                         pikv.append('X')
                     currentPi.append(pikv)
 
-            #recursion
+            #Recursion
             else:           
                 for v in tagset:
                     maxPi = 0
@@ -243,39 +300,35 @@ def viterbi(inputTokens, transitionParams, emissionParams):
 
         piTable.append(currentPi)
 
-    #backward
+    #Backward step
     tempPredictedTags = []
     backpointer = 'X'
 
     tempPredictedTags.append('START')
 
-    #adding last tag
     for i in reversed(piTable):
         if len(i) == 1:
             backpointer = i[0][1]
-            #print ('Its a stop')
         elif backpointer == 'X':
-            #print ('Non Entity')
             pass
         else:
-            #print ('Its NOT a stop')
             backpointer = i[backpointer][1]
 
         tempPredictedTags.append(backpointer)
 
+    #Trim the first tag
     tempPredictedTags = tempPredictedTags[:-1]
 
     predictedTags = []
 
     for i in reversed(tempPredictedTags):
         if i == 'X':
-            predictedTags.append('#UNK#')
+            predictedTags.append('O')
         elif i == 'START':
-            predictedTags.append('#SPACE#')
+            predictedTags.append(None)
         else:
             predictedTags.append(tagset[i])
 
-    #pprint(predictedTags)
     return predictedTags
 
 def maxMarginal (inputTokens, transitionParams, emissionParams):
@@ -330,6 +383,20 @@ def maxMarginal (inputTokens, transitionParams, emissionParams):
 
     return   
 
+######################
+# Helper Functions   
+######################
+
+def writeout(tokens, tags, filename):
+    fo = open(filename, "w", encoding = 'utf-8')
+    for i in range (len(tokens)):
+        if tokens[i] == None:
+            fo.write("\n")
+        else:
+            towrite = tokens[i] + " " + tags[i] + "\n"
+            fo.write(towrite)
+    fo.close()
+
 def simpleSentimentAnalysis(train, devin, devout):
     traindata = parseTrainFile(train)
     tokens = traindata[0]
@@ -338,6 +405,8 @@ def simpleSentimentAnalysis(train, devin, devout):
     emissionParams = calculateEmission(tags, tokens, 3)
 
     inputTokens = parseFileInput(devin)
+
+    #writecheck(inputTokens, 'modifiedInput')
 
     predictedTags = simple(inputTokens, emissionParams)
 
@@ -367,19 +436,28 @@ def maxMarginalSentimentAnalysis(train, devin, devout):
 
     inputTokens = parseFileInput(devin)
 
-def kViterbiSentimentAnalysis(train, devin, devout):
-    pass
-
 def main():
-    #simpleSentimentAnalysis('C:/Users/Bellabong/MLProject/EN/train', 'C:/Users/Bellabong/MLProject/EN/dev.in', 'C:/Users/Bellabong/MLProject/EN/dev.p2.out')
-    viterbiSentimentAnalysis('C:/Users/Bellabong/MLProject/EN/train', 'C:/Users/Bellabong/MLProject/EN/dev.in', 'C:/Users/Bellabong/MLProject/EN/dev.p3.out')
+    #For debugging
+
+    simpleSentimentAnalysis('C:/Users/Bellabong/MLProject/EN/train', 'C:/Users/Bellabong/MLProject/EN/dev.in', 'C:/Users/Bellabong/MLProject/output/EN/dev.p2.out')
+    viterbiSentimentAnalysis('C:/Users/Bellabong/MLProject/EN/train', 'C:/Users/Bellabong/MLProject/EN/dev.in', 'C:/Users/Bellabong/MLProject/output/EN/dev.p3.out')
+
+    simpleSentimentAnalysis('C:/Users/Bellabong/MLProject/FR/train', 'C:/Users/Bellabong/MLProject/FR/dev.in', 'C:/Users/Bellabong/MLProject/output/FR/dev.p2.out')
+    viterbiSentimentAnalysis('C:/Users/Bellabong/MLProject/FR/train', 'C:/Users/Bellabong/MLProject/FR/dev.in', 'C:/Users/Bellabong/MLProject/output/FR/dev.p3.out')
+
+    simpleSentimentAnalysis('C:/Users/Bellabong/MLProject/CN/train', 'C:/Users/Bellabong/MLProject/CN/dev.in', 'C:/Users/Bellabong/MLProject/output/CN/dev.p2.out')
+    viterbiSentimentAnalysis('C:/Users/Bellabong/MLProject/CN/train', 'C:/Users/Bellabong/MLProject/CN/dev.in', 'C:/Users/Bellabong/MLProject/output/CN/dev.p3.out')
+
+    simpleSentimentAnalysis('C:/Users/Bellabong/MLProject/SG/train', 'C:/Users/Bellabong/MLProject/SG/dev.in', 'C:/Users/Bellabong/MLProject/output/SG/dev.p2.out')
+    viterbiSentimentAnalysis('C:/Users/Bellabong/MLProject/SG/train', 'C:/Users/Bellabong/MLProject/SG/dev.in', 'C:/Users/Bellabong/MLProject/output/SG/dev.p3.out')
     #maxMarginalSentimentAnalysis('C:/Users/Bellabong/MLProject/EN/train', 'C:/Users/Bellabong/MLProject/EN/dev.in', 'C:/Users/Bellabong/MLProject/EN/dev.p4.out')    
+
 main()
 
-'''
-How to use the program
+######################
+# How to use the program  
+######################
 
-'''
 # if len(sys.argv) < 4:
 #     print ('Supported Algorithm: simple | viterbi | maxmarginal | kviterbi')
 #     print ('Supporter Language: EN | FR | CN | SG')
