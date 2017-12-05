@@ -51,4 +51,23 @@ def parseFileInput(filepath):
 	fo.close()
 
 	return token
+
+def parseMMInput(filepath):
+	fo = open(filepath, "r", encoding = 'utf-8')
+
+	inputTweets = []
+	tweet = []
+
+	for line in fo:
+		#print "Line is: ", line
+		temp = line.split()
+		if(len(temp)!=0):
+			tweet.append(temp[0])
+		else:
+			inputTweets.append(tweet)
+			tweet = []
+
+	fo.close()
+
+	return inputTweets	
 # parseFile()

@@ -1,6 +1,6 @@
 #Calculate various parameters of the HMM
 from parse import parseTrainFile
-from parse import parseFileInput
+from parse import parseFileInput, parseMMInput
 from pprint import pprint
 from collections import Counter
 import os
@@ -324,7 +324,7 @@ def viterbi(inputTokens, transitionParams, emissionParams):
 
     return predictedTags
 
-def maxMarginal (inputTokens, transitionParams, emissionParams):
+def maxMarginal (inputTweet, transitionParams, emissionParams):
     #generate tagset from emission table label
     tagset = []
     for t in emissionParams:
@@ -338,25 +338,26 @@ def maxMarginal (inputTokens, transitionParams, emissionParams):
     forward = []
     prevAlpha = {}
 
-    for count, token in enumerate(inputTokens):
+    for count, token in enumerate(inputTweet):
         currAlpha = {}
 
-        if (token not in emissionParams['O']) and token != None:
+        if (token not in emissionParams['O']):
             token = '#UNK#'
 
-        #termination
-        if token == None:
-            currAlpha['STOP'] = sum(prevAlpha[v] * transitionParams[v]['STOP'] for v in tagset)
-
-        else:
+        if count != len(inputTweet):
             for u in tagset:    
                 #initialization
-                if count == 0 or inputTokens[count-1] == None:
-                    currAlpha[u] = transitionParams['START'][u]
+                if count == 0 :
+                    currAlpha[u] = transitionParams['START'][u] 
+
                 #recursion
                 else:
                     #check whether transition prob is u-v or v-u
                     currAlpha[u] = sum(prevAlpha[v]*transitionParams[v][u]*emissionParams[u][token] for v in tagset)
+
+        # else:
+        #     #termination
+        #     currAlpha['STOP'] = sum(prevAlpha[v] * transitionParams[v]['STOP'] for v in tagset) 
 
         #record forward score for the current count/token
         forward.append(currAlpha)
@@ -366,63 +367,59 @@ def maxMarginal (inputTokens, transitionParams, emissionParams):
     backward = []
     prevBeta = {}
 
-    length = len(inputTokens)-2
+    length = len(inputTweet)-1
     #print(length)
 
-    for count, token in enumerate(reversed(inputTokens)):
+    for count, token in enumerate(reversed(inputTweet)):
        # print(count,token)
         #pprint(prevBeta)
         currBeta = {}
+        #print(length-count)
 
-        emittedToken = inputTokens[length-count]
+        emittedToken = inputTweet[length-count]
 
         #print(emittedToken)
 
-        if emittedToken not in emissionParams['O'] and emittedToken != None:
+        if emittedToken not in emissionParams['O']:
             emittedToken = '#UNK#'
 
-        #termination
-        if emittedToken == None:
-            currBeta['START'] = sum(prevBeta[v]*transitionParams['START'][v] for v in tagset)
-
-        else:
+        if count != len(inputTweet):
             for u in tagset:
                 #initialization
-                if count == 0 or token == None:
+                if count == 0:
                     currBeta[u] = transitionParams[u]['STOP']*emissionParams[u][emittedToken]                
                 #recursion
                 else:
                     currBeta[u]  = sum(prevBeta[v]*transitionParams[u][v]*emissionParams[u][emittedToken] for v in tagset)
+            
+        # else:
+        #     #termination
+        #     currBeta['START'] = sum(prevBeta[v]*transitionParams['START'][v] for v in tagset)
 
         #record backward score for the current count/token
         backward.append(currBeta)
         prevBeta = currBeta
 
-    for i in range(len(inputTokens)):
+    # pprint(forward)
+    # print(len(forward))
+    # pprint(backward)
+    # print(len(backward))
+
+    tweetMax = []
+
+    for i in range(0,len(inputTweet)):
+        maxMarg = 0
+        maxTag = 'Zero'
         for u in forward[i]:
-            print(u)
+            temp = forward[i][u] * backward[len(inputTweet)-i-1][u]
+            if temp>maxMarg:
+                maxMarg = temp
+                maxTag = u
+        # if maxTag == 'Zero':
+        #     pprint(inputTweet)
+        tweetMax.append(maxTag)
 
-    #checking forward and backward scores
-    for i in range(len(inputTokens)):
-        # pprint(forward[i])
-        # pprint(backward[i])
-        sumScore = 0
-        
-        # for u in forward[i]:
-        #     sumScore += u*v
-        #print(sumScore)
-
-
-    #combine forward and backward scores to find max-marginal score
-    # marginalprob = []
-    # currMarginal = []
-    # for i in range(len(inputTokens)):
-    #     for u in tagset:
-    #         currentMarginal.append(forward[i][u][inputTokens[i]]*backward[i][u][inputTokens[i]])
-
-    #choose best path
-
-    return   
+    return tweetMax
 
 ######################
 # Helper Functions   
@@ -475,26 +472,38 @@ def maxMarginalSentimentAnalysis(train, devin, devout):
     emissionParams = calculateEmission(tags, tokens, 3)
     transitionParams = calculateTransition(tags)
 
-    inputTokens = parseFileInput(devin)
+    inputTweets = parseMMInput(devin)
 
-    maxMarginal(inputTokens, transitionParams, emissionParams)
+    #maxMarginal(inputTweets[0], transitionParams, emissionParams)
+
+    predictedTags = []
+
+    for tweet in inputTweets:
+        predictedTag = maxMarginal(tweet, transitionParams, emissionParams)
+        for t in predictedTag:
+            predictedTags.append(t)
+        predictedTags.append(None)
+
+    #pprint(predictedTags)
+
+    writeout(parseFileInput(devin), predictedTags, devout)
 
 def main():
     #For debugging
 
     # simpleSentimentAnalysis('C:/Users/Bellabong/MLProject/EN/train', 'C:/Users/Bellabong/MLProject/EN/dev.in', 'C:/Users/Bellabong/MLProject/output/EN/dev.p2.out')
-    # viterbiSentimentAnalysis('C:/Users/Bellabong/MLProject/EN/train', 'C:/Users/Bellabong/MLProject/EN/dev.in', 'C:/Users/Bellabong/MLProject/output/EN/dev.p3.out')
-
     # simpleSentimentAnalysis('C:/Users/Bellabong/MLProject/FR/train', 'C:/Users/Bellabong/MLProject/FR/dev.in', 'C:/Users/Bellabong/MLProject/output/FR/dev.p2.out')
-    # viterbiSentimentAnalysis('C:/Users/Bellabong/MLProject/FR/train', 'C:/Users/Bellabong/MLProject/FR/dev.in', 'C:/Users/Bellabong/MLProject/output/FR/dev.p3.out')
-
     # simpleSentimentAnalysis('C:/Users/Bellabong/MLProject/CN/train', 'C:/Users/Bellabong/MLProject/CN/dev.in', 'C:/Users/Bellabong/MLProject/output/CN/dev.p2.out')
-    # viterbiSentimentAnalysis('C:/Users/Bellabong/MLProject/CN/train', 'C:/Users/Bellabong/MLProject/CN/dev.in', 'C:/Users/Bellabong/MLProject/output/CN/dev.p3.out')
-
     # simpleSentimentAnalysis('C:/Users/Bellabong/MLProject/SG/train', 'C:/Users/Bellabong/MLProject/SG/dev.in', 'C:/Users/Bellabong/MLProject/output/SG/dev.p2.out')
+
+    # viterbiSentimentAnalysis('C:/Users/Bellabong/MLProject/EN/train', 'C:/Users/Bellabong/MLProject/EN/dev.in', 'C:/Users/Bellabong/MLProject/output/EN/dev.p3.out')
+    # viterbiSentimentAnalysis('C:/Users/Bellabong/MLProject/FR/train', 'C:/Users/Bellabong/MLProject/FR/dev.in', 'C:/Users/Bellabong/MLProject/output/FR/dev.p3.out')
+    # viterbiSentimentAnalysis('C:/Users/Bellabong/MLProject/CN/train', 'C:/Users/Bellabong/MLProject/CN/dev.in', 'C:/Users/Bellabong/MLProject/output/CN/dev.p3.out')
     # viterbiSentimentAnalysis('C:/Users/Bellabong/MLProject/SG/train', 'C:/Users/Bellabong/MLProject/SG/dev.in', 'C:/Users/Bellabong/MLProject/output/SG/dev.p3.out')
 
-    maxMarginalSentimentAnalysis('C:/Users/Bellabong/MLProject/EN/train', 'C:/Users/Bellabong/MLProject/EN/dev.in', 'C:/Users/Bellabong/MLProject/output/EN/dev.p4.out')    
+    maxMarginalSentimentAnalysis('C:/Users/Bellabong/MLProject/EN/train', 'C:/Users/Bellabong/MLProject/EN/dev.in', 'C:/Users/Bellabong/MLProject/output/EN/dev.p4.out')
+    #maxMarginalSentimentAnalysis('C:/Users/Bellabong/MLProject/EN/train', 'C:/Users/Bellabong/MLProject/EN/test', 'C:/Users/Bellabong/MLProject/test.out')
+    maxMarginalSentimentAnalysis('C:/Users/Bellabong/MLProject/FR/train', 'C:/Users/Bellabong/MLProject/FR/dev.in', 'C:/Users/Bellabong/MLProject/output/FR/dev.p4.out')      
 
 main()
 

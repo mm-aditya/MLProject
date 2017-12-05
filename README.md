@@ -5,7 +5,7 @@
 The two methods within allow us to parse and store the data inside the training and development sets.  
   
 ## mltoolkit.py
-A suite of machine learning tools for sentiment analysis with the followint features:
+A suite of machine learning tools for sentiment analysis with the following features:
 
 ###### Emission Parameter
 Generate emission probability table from training data
