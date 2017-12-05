@@ -13,6 +13,8 @@ import itertools
 def countTags(tags):
     tagset = set(tags)
 
+    #pprint(tagset)
+
     countT = {}
     for t in tagset:
         countT[t] = 0
@@ -80,6 +82,8 @@ def calculateEmission(tags, tokens, k=0):
         emissionParams.update({j:temp})
 
     countT = countTags(tags)
+
+    #pprint(countT)
 
     #Count the emission of o by j
     for c in range(len(tokens)):
@@ -153,8 +157,10 @@ def calculateTransition(tags):
     #Calculate the transition probability
     for i in transitionParams:
         for j in transitionParams[i]:
-            if i != 'START' and j != 'STOP':
+            if i != 'START':
                 transitionParams[i][j] = float(transitionParams[i][j])/float(countT[i])
+            else:
+                transitionParams[i][j] = float(transitionParams[i][j])/float(countT[None])
 
     return transitionParams
 
@@ -239,7 +245,7 @@ def viterbi(inputTokens, transitionParams, emissionParams):
             token = '#UNK#'
         
         #Initialization
-        if count == 0:
+        if count == 0 or inputTokens[count-1] == None:
             for v in tagset:
                 pikv = []
                 pistart = transitionParams['START'][v]*emissionParams[v][token]
@@ -268,35 +274,22 @@ def viterbi(inputTokens, transitionParams, emissionParams):
             currentPi.append(pikv)
 
         else:
-            #Re-initialization
-            if inputTokens[count-1] == None:
-                for v in tagset:
+            #Recursion     
+            for v in tagset:
+                maxPi = 0
+                tempPointer = 'X'
+                for c, p in enumerate(piTable[count-1]):
                     pikv = []
-                    pistart = transitionParams['START'][v]*emissionParams[v][token]
-                    pikv.append(pistart)
-                    if pistart > 0:
-                        pikv.append('START')
+                    if p[1] == 'X': #path is already terminated
+                        pass
                     else:
-                        pikv.append('X')
-                    currentPi.append(pikv)
-
-            #Recursion
-            else:           
-                for v in tagset:
-                    maxPi = 0
-                    tempPointer = 'X'
-                    for c, p in enumerate(piTable[count-1]):
-                        pikv = []
-                        if p[1] == 'X': #path is already terminated
-                            pass
-                        else:
-                            pi = p[0]*transitionParams[tagset[c]][v]*emissionParams[v][token]
-                            if maxPi < pi:
-                                maxPi = pi
-                                tempPointer = c
-                    pikv.append(maxPi)
-                    pikv.append(tempPointer)
-                    currentPi.append(pikv)
+                        pi = p[0]*transitionParams[tagset[c]][v]*emissionParams[v][token]
+                        if maxPi < pi:
+                            maxPi = pi
+                            tempPointer = c
+                pikv.append(maxPi)
+                pikv.append(tempPointer)
+                currentPi.append(pikv)
 
         piTable.append(currentPi)
 
@@ -337,47 +330,95 @@ def maxMarginal (inputTokens, transitionParams, emissionParams):
     for t in emissionParams:
         tagset.append(t)
 
+    #pprint(tagset)
+    #pprint(transitionParams)
+    #pprint(emissionParams)
+
     #forward scores
     forward = []
     prevAlpha = {}
+
     for count, token in enumerate(inputTokens):
         currAlpha = {}
-        for u in tagset:
-            #initialization
-            if count == 0:
-                currAlpha[u] = transitionParams['START'][u]
-            #recursion
-            else:
-                #check whether transition prob is u-v or v-u
-                currAlpha[u] = sum(prevAlpha[v]*transitionParams[u][v]*emissionParams[u][token] for v in tagset)
+
+        if (token not in emissionParams['O']) and token != None:
+            token = '#UNK#'
+
+        #termination
+        if token == None:
+            currAlpha['STOP'] = sum(prevAlpha[v] * transitionParams[v]['STOP'] for v in tagset)
+
+        else:
+            for u in tagset:    
+                #initialization
+                if count == 0 or inputTokens[count-1] == None:
+                    currAlpha[u] = transitionParams['START'][u]
+                #recursion
+                else:
+                    #check whether transition prob is u-v or v-u
+                    currAlpha[u] = sum(prevAlpha[v]*transitionParams[v][u]*emissionParams[u][token] for v in tagset)
+
         #record forward score for the current count/token
         forward.append(currAlpha)
         prevAlpha = currAlpha
 
-    #termination
-    forward.append(sum(prevAlpha[v] * transitionParams[v]['STOP'] for v in tagset ))
-
     #backward scores
     backward = []
     prevBeta = {}
-    for count, token in enumerate(reversed(inputTokens[1:])):
+
+    length = len(inputTokens)-2
+    #print(length)
+
+    for count, token in enumerate(reversed(inputTokens)):
+       # print(count,token)
+        #pprint(prevBeta)
         currBeta = {}
-        for u in tagset:
-            #initialization
-            if count == 0:
-                currBeta[u] = transitionParams[u]['STOP']
-            #recursion
-            else:
-                currBeta[u]  = sum(prevBeta[v]*transitionParams[u][v]*emissionParams[u][token] for v in tagset)
+
+        emittedToken = inputTokens[length-count]
+
+        #print(emittedToken)
+
+        if emittedToken not in emissionParams['O'] and emittedToken != None:
+            emittedToken = '#UNK#'
+
+        #termination
+        if emittedToken == None:
+            currBeta['START'] = sum(prevBeta[v]*transitionParams['START'][v] for v in tagset)
+
+        else:
+            for u in tagset:
+                #initialization
+                if count == 0 or token == None:
+                    currBeta[u] = transitionParams[u]['STOP']*emissionParams[u][emittedToken]                
+                #recursion
+                else:
+                    currBeta[u]  = sum(prevBeta[v]*transitionParams[u][v]*emissionParams[u][emittedToken] for v in tagset)
+
         #record backward score for the current count/token
         backward.append(currBeta)
         prevBeta = currBeta
 
-    #termination
-    backward.append(sum(prevBeta[v] * transitionParams['START'][v] * emissionParams for v in tagset ))
+    for i in range(len(inputTokens)):
+        for u in forward[i]:
+            print(u)
+
+    #checking forward and backward scores
+    for i in range(len(inputTokens)):
+        # pprint(forward[i])
+        # pprint(backward[i])
+        sumScore = 0
+        
+        # for u in forward[i]:
+        #     sumScore += u*v
+        #print(sumScore)
+
 
     #combine forward and backward scores to find max-marginal score
-    combined = []
+    # marginalprob = []
+    # currMarginal = []
+    # for i in range(len(inputTokens)):
+    #     for u in tagset:
+    #         currentMarginal.append(forward[i][u][inputTokens[i]]*backward[i][u][inputTokens[i]])
 
     #choose best path
 
@@ -436,21 +477,24 @@ def maxMarginalSentimentAnalysis(train, devin, devout):
 
     inputTokens = parseFileInput(devin)
 
+    maxMarginal(inputTokens, transitionParams, emissionParams)
+
 def main():
     #For debugging
 
-    simpleSentimentAnalysis('C:/Users/Bellabong/MLProject/EN/train', 'C:/Users/Bellabong/MLProject/EN/dev.in', 'C:/Users/Bellabong/MLProject/output/EN/dev.p2.out')
-    viterbiSentimentAnalysis('C:/Users/Bellabong/MLProject/EN/train', 'C:/Users/Bellabong/MLProject/EN/dev.in', 'C:/Users/Bellabong/MLProject/output/EN/dev.p3.out')
+    # simpleSentimentAnalysis('C:/Users/Bellabong/MLProject/EN/train', 'C:/Users/Bellabong/MLProject/EN/dev.in', 'C:/Users/Bellabong/MLProject/output/EN/dev.p2.out')
+    # viterbiSentimentAnalysis('C:/Users/Bellabong/MLProject/EN/train', 'C:/Users/Bellabong/MLProject/EN/dev.in', 'C:/Users/Bellabong/MLProject/output/EN/dev.p3.out')
 
-    simpleSentimentAnalysis('C:/Users/Bellabong/MLProject/FR/train', 'C:/Users/Bellabong/MLProject/FR/dev.in', 'C:/Users/Bellabong/MLProject/output/FR/dev.p2.out')
-    viterbiSentimentAnalysis('C:/Users/Bellabong/MLProject/FR/train', 'C:/Users/Bellabong/MLProject/FR/dev.in', 'C:/Users/Bellabong/MLProject/output/FR/dev.p3.out')
+    # simpleSentimentAnalysis('C:/Users/Bellabong/MLProject/FR/train', 'C:/Users/Bellabong/MLProject/FR/dev.in', 'C:/Users/Bellabong/MLProject/output/FR/dev.p2.out')
+    # viterbiSentimentAnalysis('C:/Users/Bellabong/MLProject/FR/train', 'C:/Users/Bellabong/MLProject/FR/dev.in', 'C:/Users/Bellabong/MLProject/output/FR/dev.p3.out')
 
-    simpleSentimentAnalysis('C:/Users/Bellabong/MLProject/CN/train', 'C:/Users/Bellabong/MLProject/CN/dev.in', 'C:/Users/Bellabong/MLProject/output/CN/dev.p2.out')
-    viterbiSentimentAnalysis('C:/Users/Bellabong/MLProject/CN/train', 'C:/Users/Bellabong/MLProject/CN/dev.in', 'C:/Users/Bellabong/MLProject/output/CN/dev.p3.out')
+    # simpleSentimentAnalysis('C:/Users/Bellabong/MLProject/CN/train', 'C:/Users/Bellabong/MLProject/CN/dev.in', 'C:/Users/Bellabong/MLProject/output/CN/dev.p2.out')
+    # viterbiSentimentAnalysis('C:/Users/Bellabong/MLProject/CN/train', 'C:/Users/Bellabong/MLProject/CN/dev.in', 'C:/Users/Bellabong/MLProject/output/CN/dev.p3.out')
 
-    simpleSentimentAnalysis('C:/Users/Bellabong/MLProject/SG/train', 'C:/Users/Bellabong/MLProject/SG/dev.in', 'C:/Users/Bellabong/MLProject/output/SG/dev.p2.out')
-    viterbiSentimentAnalysis('C:/Users/Bellabong/MLProject/SG/train', 'C:/Users/Bellabong/MLProject/SG/dev.in', 'C:/Users/Bellabong/MLProject/output/SG/dev.p3.out')
-    #maxMarginalSentimentAnalysis('C:/Users/Bellabong/MLProject/EN/train', 'C:/Users/Bellabong/MLProject/EN/dev.in', 'C:/Users/Bellabong/MLProject/EN/dev.p4.out')    
+    # simpleSentimentAnalysis('C:/Users/Bellabong/MLProject/SG/train', 'C:/Users/Bellabong/MLProject/SG/dev.in', 'C:/Users/Bellabong/MLProject/output/SG/dev.p2.out')
+    # viterbiSentimentAnalysis('C:/Users/Bellabong/MLProject/SG/train', 'C:/Users/Bellabong/MLProject/SG/dev.in', 'C:/Users/Bellabong/MLProject/output/SG/dev.p3.out')
+
+    maxMarginalSentimentAnalysis('C:/Users/Bellabong/MLProject/EN/train', 'C:/Users/Bellabong/MLProject/EN/dev.in', 'C:/Users/Bellabong/MLProject/output/EN/dev.p4.out')    
 
 main()
 
