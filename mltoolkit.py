@@ -421,6 +421,9 @@ def maxMarginal (inputTweet, transitionParams, emissionParams):
 
     return tweetMax
 
+def posteriorViterbi():
+    pass
+
 ######################
 # Helper Functions   
 ######################
@@ -488,22 +491,32 @@ def maxMarginalSentimentAnalysis(train, devin, devout):
 
     writeout(parseFileInput(devin), predictedTags, devout)
 
+def posteriorViterbiSentimentAnalysis(train, devin, devout):
+    pass
+
 def main():
     #For debugging
 
-    # simpleSentimentAnalysis('C:/Users/Bellabong/MLProject/EN/train', 'C:/Users/Bellabong/MLProject/EN/dev.in', 'C:/Users/Bellabong/MLProject/output/EN/dev.p2.out')
-    # simpleSentimentAnalysis('C:/Users/Bellabong/MLProject/FR/train', 'C:/Users/Bellabong/MLProject/FR/dev.in', 'C:/Users/Bellabong/MLProject/output/FR/dev.p2.out')
-    # simpleSentimentAnalysis('C:/Users/Bellabong/MLProject/CN/train', 'C:/Users/Bellabong/MLProject/CN/dev.in', 'C:/Users/Bellabong/MLProject/output/CN/dev.p2.out')
-    # simpleSentimentAnalysis('C:/Users/Bellabong/MLProject/SG/train', 'C:/Users/Bellabong/MLProject/SG/dev.in', 'C:/Users/Bellabong/MLProject/output/SG/dev.p2.out')
+    simpleSentimentAnalysis('C:/Users/Bellabong/MLProject/input/EN/train', 'C:/Users/Bellabong/MLProject/input/EN/dev.in', 'C:/Users/Bellabong/MLProject/output/EN/dev.p2.out')
+    simpleSentimentAnalysis('C:/Users/Bellabong/MLProject/input/FR/train', 'C:/Users/Bellabong/MLProject/input/FR/dev.in', 'C:/Users/Bellabong/MLProject/output/FR/dev.p2.out')
+    simpleSentimentAnalysis('C:/Users/Bellabong/MLProject/input/CN/train', 'C:/Users/Bellabong/MLProject/input/CN/dev.in', 'C:/Users/Bellabong/MLProject/output/CN/dev.p2.out')
+    simpleSentimentAnalysis('C:/Users/Bellabong/MLProject/input/SG/train', 'C:/Users/Bellabong/MLProject/input/SG/dev.in', 'C:/Users/Bellabong/MLProject/output/SG/dev.p2.out')
 
-    # viterbiSentimentAnalysis('C:/Users/Bellabong/MLProject/EN/train', 'C:/Users/Bellabong/MLProject/EN/dev.in', 'C:/Users/Bellabong/MLProject/output/EN/dev.p3.out')
-    # viterbiSentimentAnalysis('C:/Users/Bellabong/MLProject/FR/train', 'C:/Users/Bellabong/MLProject/FR/dev.in', 'C:/Users/Bellabong/MLProject/output/FR/dev.p3.out')
-    # viterbiSentimentAnalysis('C:/Users/Bellabong/MLProject/CN/train', 'C:/Users/Bellabong/MLProject/CN/dev.in', 'C:/Users/Bellabong/MLProject/output/CN/dev.p3.out')
-    # viterbiSentimentAnalysis('C:/Users/Bellabong/MLProject/SG/train', 'C:/Users/Bellabong/MLProject/SG/dev.in', 'C:/Users/Bellabong/MLProject/output/SG/dev.p3.out')
+    viterbiSentimentAnalysis('C:/Users/Bellabong/MLProject/input/EN/train', 'C:/Users/Bellabong/MLProject/input/EN/dev.in', 'C:/Users/Bellabong/MLProject/output/EN/dev.p3.out')
+    viterbiSentimentAnalysis('C:/Users/Bellabong/MLProject/input/FR/train', 'C:/Users/Bellabong/MLProject/input/FR/dev.in', 'C:/Users/Bellabong/MLProject/output/FR/dev.p3.out')
+    viterbiSentimentAnalysis('C:/Users/Bellabong/MLProject/input/CN/train', 'C:/Users/Bellabong/MLProject/input/CN/dev.in', 'C:/Users/Bellabong/MLProject/output/CN/dev.p3.out')
+    viterbiSentimentAnalysis('C:/Users/Bellabong/MLProject/input/SG/train', 'C:/Users/Bellabong/MLProject/input/SG/dev.in', 'C:/Users/Bellabong/MLProject/output/SG/dev.p3.out')
 
-    maxMarginalSentimentAnalysis('C:/Users/Bellabong/MLProject/EN/train', 'C:/Users/Bellabong/MLProject/EN/dev.in', 'C:/Users/Bellabong/MLProject/output/EN/dev.p4.out')
-    #maxMarginalSentimentAnalysis('C:/Users/Bellabong/MLProject/EN/train', 'C:/Users/Bellabong/MLProject/EN/test', 'C:/Users/Bellabong/MLProject/test.out')
-    maxMarginalSentimentAnalysis('C:/Users/Bellabong/MLProject/FR/train', 'C:/Users/Bellabong/MLProject/FR/dev.in', 'C:/Users/Bellabong/MLProject/output/FR/dev.p4.out')      
+    maxMarginalSentimentAnalysis('C:/Users/Bellabong/MLProject/input/EN/train', 'C:/Users/Bellabong/MLProject/input/EN/dev.in', 'C:/Users/Bellabong/MLProject/output/EN/dev.p4.out')
+    maxMarginalSentimentAnalysis('C:/Users/Bellabong/MLProject/input/FR/train', 'C:/Users/Bellabong/MLProject/input/FR/dev.in', 'C:/Users/Bellabong/MLProject/output/FR/dev.p4.out')      
+
+    # posteriorViterbiSentimentAnalysis('C:/Users/Bellabong/MLProject/input/EN/train', 'C:/Users/Bellabong/MLProject/input/EN/dev.in', 'C:/Users/Bellabong/MLProject/output/EN/dev.p5.out')
+    # posteriorViterbiSentimentAnalysis('C:/Users/Bellabong/MLProject/input/FR/train', 'C:/Users/Bellabong/MLProject/input/FR/dev.in', 'C:/Users/Bellabong/MLProject/output/FR/dev.p5.out')
+
+    # posteriorViterbiSentimentAnalysis('C:/Users/Bellabong/MLProject/input/EN/train', 'C:/Users/Bellabong/MLProject/test/EN/test.in', 'C:/Users/Bellabong/MLProject/output/EN/test.p5.out')
+    # posteriorViterbiSentimentAnalysis('C:/Users/Bellabong/MLProject/input/FR/train', 'C:/Users/Bellabong/MLProject/test/FR/test.in', 'C:/Users/Bellabong/MLProject/output/FR/test.p5.out')
+
+    #posteriorViterbiSentimentAnalysis('C:/Users/Bellabong/MLProject/EN/train', 'C:/Users/Bellabong/MLProject/EN/dev.in', 'C:/Users/Bellabong/MLProject/output/EN/dev.p5.out')
 
 main()
 
