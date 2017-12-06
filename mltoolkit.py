@@ -1,6 +1,4 @@
-#Calculate various parameters of the HMM
-from parse import parseTrainFile
-from parse import parseFileInput, parseMMInput
+from parse import parseTrainFile, parseFileInput, parseMMInput, parseTrainP5, parseInputP5
 from pprint import pprint
 from collections import Counter
 import os
@@ -212,7 +210,7 @@ def simple(inputTokens, emissionParams):
 
     return predictedTags
 
-def viterbi(inputTokens, transitionParams, emissionParams):
+def viterbi(inputTweet, transitionParams, emissionParams):
     """
     Viterbi decoding algorithm to predict the most likely tag sequence for the given tokens
     If the trained model doesn't recognise the word, use the parameter for #UNK# 
@@ -238,14 +236,14 @@ def viterbi(inputTokens, transitionParams, emissionParams):
     #Get path probability table
     piTable = []
 
-    for count, token in enumerate(inputTokens):
+    for count, token in enumerate(inputTweet):
         currentPi = []
 
-        if token not in emissionParams['O'] and token != None:
+        if token not in emissionParams['O']:
             token = '#UNK#'
         
         #Initialization
-        if count == 0 or inputTokens[count-1] == None:
+        if count == 0:
             for v in tagset:
                 pikv = []
                 pistart = transitionParams['START'][v]*emissionParams[v][token]
@@ -256,30 +254,13 @@ def viterbi(inputTokens, transitionParams, emissionParams):
                     pikv.append('X')
                 currentPi.append(pikv)
 
-        #Termination
-        elif token == None:
-            maxPi = 0
-            tempPointer = 'X'
-            for c, p in enumerate(piTable[count-1]):
-                pikv = []
-                if p[1] == 'X': #path is already terminated
-                    pass
-                else:
-                    pi = p[0]*transitionParams[tagset[c]]['STOP']
-                    if maxPi < pi:
-                        maxPi = pi
-                        tempPointer = c
-            pikv.append(maxPi)
-            pikv.append(tempPointer)
-            currentPi.append(pikv)
-
         else:
             #Recursion     
             for v in tagset:
+                pikv = []
                 maxPi = 0
                 tempPointer = 'X'
                 for c, p in enumerate(piTable[count-1]):
-                    pikv = []
                     if p[1] == 'X': #path is already terminated
                         pass
                     else:
@@ -293,11 +274,27 @@ def viterbi(inputTokens, transitionParams, emissionParams):
 
         piTable.append(currentPi)
 
+    #Termination
+    currentPi = []
+    pikv = []
+    maxPi = 0
+    tempPointer = 'X'
+    for c, p in enumerate(piTable[len(inputTweet)-1]):      
+        if p[1] == 'X': #path is already terminated
+            pass
+        else:
+            pi = p[0]*transitionParams[tagset[c]]['STOP']
+            if maxPi < pi:
+                maxPi = pi
+                tempPointer = c
+    pikv.append(maxPi)
+    pikv.append(tempPointer)
+    currentPi.append(pikv)
+    piTable.append(currentPi)
+
     #Backward step
     tempPredictedTags = []
     backpointer = 'X'
-
-    tempPredictedTags.append('START')
 
     for i in reversed(piTable):
         if len(i) == 1:
@@ -318,7 +315,7 @@ def viterbi(inputTokens, transitionParams, emissionParams):
         if i == 'X':
             predictedTags.append('O')
         elif i == 'START':
-            predictedTags.append(None)
+            pass
         else:
             predictedTags.append(tagset[i])
 
@@ -415,14 +412,9 @@ def maxMarginal (inputTweet, transitionParams, emissionParams):
             if temp>maxMarg:
                 maxMarg = temp
                 maxTag = u
-        # if maxTag == 'Zero':
-        #     pprint(inputTweet)
         tweetMax.append(maxTag)
 
     return tweetMax
-
-def posteriorViterbi():
-    pass
 
 ######################
 # Helper Functions   
@@ -461,11 +453,17 @@ def viterbiSentimentAnalysis(train, devin, devout):
     emissionParams = calculateEmission(tags, tokens, 3)
     transitionParams = calculateTransition(tags)
 
-    inputTokens = parseFileInput(devin)
+    inputTweets = parseMMInput(devin)
 
-    predictedTags = viterbi(inputTokens, transitionParams, emissionParams)
+    predictedTags = []
 
-    writeout(inputTokens, predictedTags, devout)
+    for tweet in inputTweets:
+        predictedTag = viterbi(tweet, transitionParams, emissionParams)
+        for t in predictedTag:
+            predictedTags.append(t)
+        predictedTags.append(None)
+
+    writeout(parseFileInput(devin), predictedTags, devout)
 
 def maxMarginalSentimentAnalysis(train, devin, devout):
     traindata = parseTrainFile(train)
@@ -477,7 +475,25 @@ def maxMarginalSentimentAnalysis(train, devin, devout):
 
     inputTweets = parseMMInput(devin)
 
-    #maxMarginal(inputTweets[0], transitionParams, emissionParams)
+    predictedTags = []
+
+    for tweet in inputTweets:
+        predictedTag = maxMarginal(tweet, transitionParams, emissionParams)
+        for t in predictedTag:
+            predictedTags.append(t)
+        predictedTags.append(None)
+
+    writeout(parseFileInput(devin), predictedTags, devout)
+
+def improvedMaxMarginalSentimentAnalysis(train, devin, devout):
+    traindata = parseTrainP5(train)
+    tokens = traindata[0]
+    tags = traindata[1]
+
+    emissionParams = calculateEmission(tags, tokens, 3)
+    transitionParams = calculateTransition(tags)
+
+    inputTweets = parseInputP5(devin)
 
     predictedTags = []
 
@@ -487,16 +503,32 @@ def maxMarginalSentimentAnalysis(train, devin, devout):
             predictedTags.append(t)
         predictedTags.append(None)
 
-    #pprint(predictedTags)
-
     writeout(parseFileInput(devin), predictedTags, devout)
 
-def posteriorViterbiSentimentAnalysis(train, devin, devout):
-    pass
+    # UPDATE PARAMETES BUT FAIL
+    # for i in range (0,2):
+    #     predictedTags = []
+    #     emissionParams = calculateEmission(tags, tokens, 3)
+    #     transitionParams = calculateTransition(tags)
+    #     for tweet in inputTweets:
+    #         predictedTag = maxMarginal(tweet, transitionParams, emissionParams)
+    #         for t in predictedTag:
+    #             predictedTags.append(t)
+    #         predictedTags.append(None)
+
+    #         for word in tweet:
+    #             tokens.append(word)
+    #         tokens.append(None)       
+
+    #     for tag in predictedTags:
+    #         tags.append(tag)
+
+    #     print(len(tokens))
+    #     print(len(tags))
+
+    #     writeout(inputFile, predictedTags, devout)  
 
 def main():
-    #For debugging
-
     simpleSentimentAnalysis('C:/Users/Bellabong/MLProject/input/EN/train', 'C:/Users/Bellabong/MLProject/input/EN/dev.in', 'C:/Users/Bellabong/MLProject/output/EN/dev.p2.out')
     simpleSentimentAnalysis('C:/Users/Bellabong/MLProject/input/FR/train', 'C:/Users/Bellabong/MLProject/input/FR/dev.in', 'C:/Users/Bellabong/MLProject/output/FR/dev.p2.out')
     simpleSentimentAnalysis('C:/Users/Bellabong/MLProject/input/CN/train', 'C:/Users/Bellabong/MLProject/input/CN/dev.in', 'C:/Users/Bellabong/MLProject/output/CN/dev.p2.out')
@@ -510,14 +542,11 @@ def main():
     maxMarginalSentimentAnalysis('C:/Users/Bellabong/MLProject/input/EN/train', 'C:/Users/Bellabong/MLProject/input/EN/dev.in', 'C:/Users/Bellabong/MLProject/output/EN/dev.p4.out')
     maxMarginalSentimentAnalysis('C:/Users/Bellabong/MLProject/input/FR/train', 'C:/Users/Bellabong/MLProject/input/FR/dev.in', 'C:/Users/Bellabong/MLProject/output/FR/dev.p4.out')      
 
-    # posteriorViterbiSentimentAnalysis('C:/Users/Bellabong/MLProject/input/EN/train', 'C:/Users/Bellabong/MLProject/input/EN/dev.in', 'C:/Users/Bellabong/MLProject/output/EN/dev.p5.out')
-    # posteriorViterbiSentimentAnalysis('C:/Users/Bellabong/MLProject/input/FR/train', 'C:/Users/Bellabong/MLProject/input/FR/dev.in', 'C:/Users/Bellabong/MLProject/output/FR/dev.p5.out')
+    improvedMaxMarginalSentimentAnalysis('C:/Users/Bellabong/MLProject/input/EN/train', 'C:/Users/Bellabong/MLProject/input/EN/dev.in', 'C:/Users/Bellabong/MLProject/output/EN/dev.p5.out')
+    improvedMaxMarginalSentimentAnalysis('C:/Users/Bellabong/MLProject/input/FR/train', 'C:/Users/Bellabong/MLProject/input/FR/dev.in', 'C:/Users/Bellabong/MLProject/output/FR/dev.p5.out')
 
-    # posteriorViterbiSentimentAnalysis('C:/Users/Bellabong/MLProject/input/EN/train', 'C:/Users/Bellabong/MLProject/test/EN/test.in', 'C:/Users/Bellabong/MLProject/output/EN/test.p5.out')
-    # posteriorViterbiSentimentAnalysis('C:/Users/Bellabong/MLProject/input/FR/train', 'C:/Users/Bellabong/MLProject/test/FR/test.in', 'C:/Users/Bellabong/MLProject/output/FR/test.p5.out')
-
-    #posteriorViterbiSentimentAnalysis('C:/Users/Bellabong/MLProject/EN/train', 'C:/Users/Bellabong/MLProject/EN/dev.in', 'C:/Users/Bellabong/MLProject/output/EN/dev.p5.out')
-
+    improvedMaxMarginalSentimentAnalysis('C:/Users/Bellabong/MLProject/input/EN/train', 'C:/Users/Bellabong/MLProject/test/EN/test.in', 'C:/Users/Bellabong/MLProject/output/EN/test.p5.out')
+    improvedMaxMarginalSentimentAnalysis('C:/Users/Bellabong/MLProject/input/FR/train', 'C:/Users/Bellabong/MLProject/test/FR/test.in', 'C:/Users/Bellabong/MLProject/output/FR/test.p5.out')
 main()
 
 ######################
@@ -541,16 +570,16 @@ main()
 # train = ''
 
 # if language == 'EN':
-#     train = 'C:/Users/Bellabong/MLProject/EN/train'
+#     train = 'C:/Users/Bellabong/MLProject/input/EN/train'
 
 # elif language == 'FR':
-#     train = 'C:/Users/Bellabong/MLProject/FR/train'
+#     train = 'C:/Users/Bellabong/MLProject/input/FR/train'
 
 # elif language == 'CN':
-#     train = 'C:/Users/Bellabong/MLProject/CN/train'
+#     train = 'C:/Users/Bellabong/MLProject/input/CN/train'
 
 # elif language == 'SG':
-#     train = 'C:/Users/Bellabong/MLProject/SG/train'
+#     train = 'C:/Users/Bellabong/MLProject/input/SG/train'
 
 # else:
 #     print ('Language is not supported')
